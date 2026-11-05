@@ -48,6 +48,13 @@ struct SettingsView: View {
             }
             Section("Crediti") {
                 Text("VoiceDeck \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development") · App nativa per macOS").font(.caption)
+                Text("Sviluppato da Giovanni Tommasini").font(.callout.weight(.semibold))
+                Link("Giovanni Tommasini su GitHub", destination: URL(string: "https://github.com/tommasinigiovanni")!)
+                HStack {
+                    Link("Repository del progetto", destination: URL(string: "https://github.com/tommasinigiovanni/VoiceDeck")!)
+                    Link("Segnalazioni e proposte", destination: URL(string: "https://github.com/tommasinigiovanni/VoiceDeck/issues")!)
+                    Link("Licenza MIT", destination: URL(string: "https://github.com/tommasinigiovanni/VoiceDeck/blob/main/LICENSE")!)
+                }.font(.caption)
                 HStack { Link("FluidAudio (Apache 2.0)", destination: URL(string: "https://github.com/FluidInference/FluidAudio")!)
                     Link("Modello speaker (OpenMDW 1.1)", destination: URL(string: "https://huggingface.co/FluidInference/nemotron-3-diarization-coreml")!) }.font(.caption)
             }

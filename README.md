@@ -102,3 +102,7 @@ I test coprono WAV stereo oltre 25 MB, continuità tra parti, code brevi, margin
 Le chiamate OpenRouter autenticate richiedono chiave e credito e non sono eseguite dai test automatici. Il costo mostrato somma `usage.cost` delle risposte ricevute e salvate; richieste interrotte o ritentate possono essere state comunque elaborate dal provider.
 
 Codice: [MIT](LICENSE). Modelli e dipendenze: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Icona generata con imagegen: [asset e prompt](assets/ICON_PROMPT.md).
+
+## Crediti
+
+Sviluppato da [Giovanni Tommasini](https://github.com/tommasinigiovanni). [Codice sorgente e aggiornamenti](https://github.com/tommasinigiovanni/VoiceDeck) · [Segnalazioni e proposte](https://github.com/tommasinigiovanni/VoiceDeck/issues). Gli stessi riferimenti sono disponibili nell’app in **Impostazioni → Crediti**.
