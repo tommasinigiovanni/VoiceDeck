@@ -1,0 +1,16 @@
+.build/
+build/
+.swiftpm/
+.DS_Store
+*.xcuserstate
+.env
+.env.*
+models/
+recordings/
+*.gguf
+*.onnx
+*.safetensors
+*.wav
+*.m4a
+*.mp3
+*.flac
