@@ -5,7 +5,7 @@ configuration="${1:-release}"
 export CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache"
 swift build --disable-sandbox --cache-path "$PWD/.build/cache" -debug-info-format none -c "$configuration" --product VoiceDeck
 binary_dir="$(swift build --disable-sandbox --cache-path "$PWD/.build/cache" -debug-info-format none -c "$configuration" --show-bin-path)"
-app="$PWD/build/VoiceDeck.app"
+app="${VOICEDECK_OUTPUT_APP:-$PWD/build/VoiceDeck.app}"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary_dir/VoiceDeck" "$app/Contents/MacOS/VoiceDeck"
 for bundle in "$binary_dir/"*.bundle; do

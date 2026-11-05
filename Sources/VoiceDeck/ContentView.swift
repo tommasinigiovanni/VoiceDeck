@@ -12,6 +12,27 @@ struct ContentView: View {
     @State private var vocabularyReview: VocabularyReviewDraft?
 
     var body: some View {
+        VStack(spacing: 0) {
+            navigation
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+            AppFooter().fixedSize(horizontal: false, vertical: true)
+        }
+        .sheet(isPresented: $showSpeakers) { SpeakersView().environmentObject(store) }
+        .sheet(isPresented: $showVocabulary) { VocabularyView().environmentObject(store) }
+        .sheet(item: $vocabularyReview) { draft in VocabularyReview(documentID: draft.id, suggestions: draft.suggestions).environmentObject(store) }
+        .sheet(item: $editingSegment) { segment in SegmentEditor(segment: segment).environmentObject(store) }
+        .onDrop(of: [.fileURL], isTargeted: $dropTarget) { providers in
+            guard !store.blocksChanges, let provider = providers.first else { return false }
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                guard let url else { return }; Task { @MainActor in store.importFile(url) }
+            }
+            return true
+        }
+        .overlay { if dropTarget { RoundedRectangle(cornerRadius: 12).stroke(Palette.accent, lineWidth: 3).padding(8).allowsHitTesting(false) } }
+    }
+
+    private var navigation: some View {
         NavigationSplitView {
             sidebar.navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
@@ -19,7 +40,7 @@ struct ContentView: View {
                 if store.isCapturing { recordingBar }
                 if let document = store.document { transcript(document) }
                 else { importView }
-                if store.sourceURL != nil || store.document != nil { statusBar }
+                if store.sourceURL != nil || store.document != nil { statusBar.fixedSize(horizontal: false, vertical: true) }
             }
             .background(Color(nsColor: .textBackgroundColor))
             .toolbar {
@@ -54,19 +75,6 @@ struct ContentView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { AppFooter() }
-        .sheet(isPresented: $showSpeakers) { SpeakersView().environmentObject(store) }
-        .sheet(isPresented: $showVocabulary) { VocabularyView().environmentObject(store) }
-        .sheet(item: $vocabularyReview) { draft in VocabularyReview(documentID: draft.id, suggestions: draft.suggestions).environmentObject(store) }
-        .sheet(item: $editingSegment) { segment in SegmentEditor(segment: segment).environmentObject(store) }
-        .onDrop(of: [.fileURL], isTargeted: $dropTarget) { providers in
-            guard !store.blocksChanges, let provider = providers.first else { return false }
-            _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                guard let url else { return }; Task { @MainActor in store.importFile(url) }
-            }
-            return true
-        }
-        .overlay { if dropTarget { RoundedRectangle(cornerRadius: 12).stroke(Palette.accent, lineWidth: 3).padding(8).allowsHitTesting(false) } }
     }
 
     private var recordingBar: some View {

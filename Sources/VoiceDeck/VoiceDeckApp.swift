@@ -54,7 +54,12 @@ struct VoiceDeckApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true)
+        NSApp.setActivationPolicy(.regular)
+        // Read the artwork from this build rather than a cached LaunchServices icon.
+        let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns")
+            ?? Bundle.module.url(forResource: "AppIcon", withExtension: "png")
+        if let iconURL, let icon = NSImage(contentsOf: iconURL) { NSApp.applicationIconImage = icon }
+        NSApp.activate(ignoringOtherApps: true)
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
