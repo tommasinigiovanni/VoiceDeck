@@ -8,12 +8,15 @@ struct ContentView: View {
     @State private var dropTarget = false
     @State private var showSpeakers = false
     @State private var editingSegment: TranscriptSegment?
+    @State private var showVocabulary = false
+    @State private var vocabularyReview: VocabularyReviewDraft?
 
     var body: some View {
         NavigationSplitView {
             sidebar.navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
             VStack(spacing: 0) {
+                if store.isCapturing { recordingBar }
                 if let document = store.document { transcript(document) }
                 else { importView }
                 if store.sourceURL != nil || store.document != nil { statusBar }
@@ -27,8 +30,17 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
+                    Button { store.toggleRecording() } label: {
+                        Label(store.isRecording ? "Ferma e trascrivi" : "Registra", systemImage: store.isRecording ? "stop.circle.fill" : "mic")
+                    }.disabled(!store.canToggleRecording).help("Registrazione rapida · \(store.shortcutTitle)")
                     if store.document != nil {
-                        Button { showSpeakers = true } label: { Label("Speaker", systemImage: "person.2") }.disabled(store.isBusy)
+                        Menu {
+                            Button("Rivedi suggerimenti del dizionario…") {
+                                if let id = store.document?.id { vocabularyReview = VocabularyReviewDraft(id: id, suggestions: store.vocabularySuggestions()) }
+                            }.disabled(store.vocabulary.isEmpty)
+                            Button("Gestisci dizionario personale…") { showVocabulary = true }
+                        } label: { Label("Correzioni", systemImage: "text.badge.checkmark") }.disabled(store.blocksChanges)
+                        Button { showSpeakers = true } label: { Label("Speaker", systemImage: "person.2") }.disabled(store.blocksChanges)
                         Button { store.copyTranscript() } label: { Label("Copia", systemImage: "doc.on.doc") }.disabled(store.document?.segments.isEmpty ?? true)
                         Menu {
                             Button("Testo (.txt)") { store.export("txt") }
@@ -42,16 +54,34 @@ struct ContentView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) { AppFooter() }
         .sheet(isPresented: $showSpeakers) { SpeakersView().environmentObject(store) }
+        .sheet(isPresented: $showVocabulary) { VocabularyView().environmentObject(store) }
+        .sheet(item: $vocabularyReview) { draft in VocabularyReview(documentID: draft.id, suggestions: draft.suggestions).environmentObject(store) }
         .sheet(item: $editingSegment) { segment in SegmentEditor(segment: segment).environmentObject(store) }
         .onDrop(of: [.fileURL], isTargeted: $dropTarget) { providers in
-            guard !store.isBusy, let provider = providers.first else { return false }
+            guard !store.blocksChanges, let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
                 guard let url else { return }; Task { @MainActor in store.importFile(url) }
             }
             return true
         }
         .overlay { if dropTarget { RoundedRectangle(cornerRadius: 12).stroke(Palette.accent, lineWidth: 3).padding(8).allowsHitTesting(false) } }
+    }
+
+    private var recordingBar: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "record.circle.fill").foregroundStyle(.red)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(store.isRecording ? "Registrazione dal microfono" : "Accesso al microfono…").font(.callout.weight(.semibold))
+                Text(store.mode.title).font(.caption).foregroundStyle(.secondary)
+            }
+            Text(Timecode.display(store.recorder.elapsed)).monospacedDigit()
+            ProgressView(value: store.recorder.level).frame(width: 90).tint(.red)
+            Spacer()
+            Button("Annulla") { store.discardRecording() }.disabled(!store.isRecording)
+            Button("Ferma e trascrivi") { store.toggleRecording() }.buttonStyle(.borderedProminent).disabled(!store.isRecording)
+        }.padding(18).background(Color.red.opacity(0.06))
     }
 
     private var sidebar: some View {
@@ -66,7 +96,11 @@ struct ContentView: View {
             }.padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 26)
             Button { store.newTranscription(); store.chooseFile() } label: {
                 Label("Nuova trascrizione", systemImage: "plus").font(.system(size: 13, weight: .semibold)).frame(maxWidth: .infinity).padding(.vertical, 7)
-            }.buttonStyle(.borderedProminent).disabled(store.isBusy).padding(.horizontal, 16)
+            }.buttonStyle(.borderedProminent).disabled(store.blocksChanges).padding(.horizontal, 16)
+            Button { store.toggleRecording() } label: {
+                Label(store.isRecording ? "Ferma e trascrivi" : "Registra dal microfono", systemImage: store.isRecording ? "stop.circle.fill" : "mic")
+                    .frame(maxWidth: .infinity).padding(.vertical, 5)
+            }.disabled(!store.canToggleRecording).padding(.horizontal, 16).padding(.top, 9)
             HStack { Text("LIBRERIA").font(.system(size: 10, weight: .semibold)).tracking(1.3); Spacer(); Text("\(store.documents.count)").monospacedDigit() }
                 .foregroundStyle(.secondary).padding(.horizontal, 20).padding(.top, 30).padding(.bottom, 10)
             ScrollView {
@@ -84,7 +118,7 @@ struct ContentView: View {
                                 Spacer(minLength: 0)
                             }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(store.selectedID == doc.id ? Color.primary.opacity(0.065) : .clear, in: RoundedRectangle(cornerRadius: 9))
-                        }.buttonStyle(.plain).disabled(store.isBusy)
+                        }.buttonStyle(.plain).disabled(store.blocksChanges)
                     }
                 }.padding(.horizontal, 10)
                 if store.documents.isEmpty {
@@ -117,7 +151,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 9) {
                     Picker("Modalità di trascrizione", selection: $store.modeRaw) {
                         ForEach(TranscriptionMode.allCases, id: \.rawValue) { mode in Text(mode.title).tag(mode.rawValue) }
-                    }.pickerStyle(.segmented).disabled(store.isBusy)
+                    }.pickerStyle(.segmented).disabled(store.blocksChanges)
                     Text(store.mode == .local ? "Audio e testo rimangono sul Mac. Nessuna chiave API; circa 480 MB per Parakeet al primo utilizzo." : "Il testo viene generato da Nemotron 3.5 su OpenRouter, con la tua chiave API.")
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
@@ -140,7 +174,7 @@ struct ContentView: View {
                         .background(Palette.accent.opacity(0.035), in: RoundedRectangle(cornerRadius: 16))
                         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Palette.accent.opacity(0.40), style: StrokeStyle(lineWidth: 1, dash: [6, 5])) }
                         .contentShape(Rectangle())
-                }.buttonStyle(.plain).disabled(store.isBusy)
+                }.buttonStyle(.plain).disabled(store.blocksChanges)
                 HStack(alignment: .top, spacing: 24) {
                     feature("scissors", "File grandi, già gestiti", store.mode == .local ? "Lettura a blocchi per registrazioni lunghe." : "Suddivisione automatica sotto i 25 MB per richiesta.")
                     feature("person.2.wave.2", "Speaker sul Mac", "Nemotron 3 Diarization segue le voci nell’intero audio.")
@@ -152,7 +186,7 @@ struct ContentView: View {
                     Spacer()
                     Button { openSettings() } label: { Text("Impostazioni") }.buttonStyle(.bordered)
                     Button { store.start() } label: { Label("Trascrivi audio", systemImage: "arrow.right").padding(.horizontal, 12).padding(.vertical, 5) }
-                        .buttonStyle(.borderedProminent).disabled(store.sourceURL == nil || store.isBusy)
+                        .buttonStyle(.borderedProminent).disabled(store.sourceURL == nil || store.blocksChanges)
                 }
                 Text("L’analisi delle voci avviene sul Mac con Nemotron 3 Diarization: circa 190 MB al primo utilizzo, condivisi tra le due modalità.")
                     .font(.system(size: 11)).foregroundStyle(.tertiary).lineSpacing(3)

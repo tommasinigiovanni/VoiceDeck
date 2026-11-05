@@ -14,27 +14,39 @@ enum TranscribeLauncher {
 }
 
 struct VoiceDeckApp: App {
+    @Environment(\.openWindow) private var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var store = TranscribeStore(preview: CommandLine.arguments.contains("--preview"))
+    @StateObject private var updater = AppUpdater()
 
     var body: some Scene {
         Window("VoiceDeck", id: "main") {
-            ContentView().environmentObject(store)
+            ContentView().environmentObject(store).environmentObject(updater)
                 .frame(minWidth: 1060, minHeight: 720)
                 .tint(Palette.accent)
                 .alert("VoiceDeck", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) {
                     Button("OK") { store.error = nil }
                 } message: { Text(store.error ?? "") }
+                .onAppear { store.configureShortcut() }
         }
         .defaultSize(width: 1320, height: 860)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("Nuova trascrizione") { store.newTranscription() }.keyboardShortcut("n").disabled(store.isBusy)
-                Button("Importa audio…") { store.chooseFile() }.keyboardShortcut("o").disabled(store.isBusy)
+                Button("Nuova trascrizione") { store.newTranscription() }.keyboardShortcut("n").disabled(store.blocksChanges)
+                Button("Importa audio…") { store.chooseFile() }.keyboardShortcut("o").disabled(store.blocksChanges)
+            }
+            CommandGroup(after: .appInfo) {
+                Button("Controlla aggiornamenti…") {
+                    openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true); updater.check()
+                }.disabled(updater.checking)
+            }
+            CommandMenu("Registrazione") {
+                Button(store.isRecording ? "Ferma e trascrivi" : "Registra dal microfono") { store.toggleRecording() }.disabled(!store.canToggleRecording)
+                Button("Annulla registrazione") { store.discardRecording() }.disabled(!store.isRecording)
             }
         }
         Settings { SettingsView().environmentObject(store).tint(Palette.accent) }
-        MenuBarExtra("VoiceDeck", systemImage: "waveform") {
+        MenuBarExtra("VoiceDeck", systemImage: store.isRecording ? "record.circle.fill" : "waveform") {
             TrayView().environmentObject(store).tint(Palette.accent)
         }.menuBarExtraStyle(.window)
     }

@@ -31,6 +31,9 @@ Richiede **macOS 14+**; Apple Silicon per la modalità locale. Build e inferenza
 - Archivio locale, salvataggio dopo ogni parte e ripresa dopo errori, interruzioni o riavvio.
 - Chiave OpenRouter nel Portachiavi macOS.
 - Icona nella barra dei menu con importazione, apertura della finestra, avanzamento, interruzione e impostazioni. Chiudere la finestra mantiene l’app disponibile; usa **Esci** o Cmd-Q per terminarla.
+- Registrazione dal microfono con pulsante e scorciatoia globale, anche con un’altra app attiva. Trascrizione e copia negli appunti alla fine della registrazione.
+- Dizionario personale con grafie corrette e varianti per nomi, aziende e termini tecnici; suggerimenti da rivedere prima di applicarli.
+- Footer fisso con versione e **Controlla aggiornamenti**, con download delle nuove release da GitHub.
 
 ![Importazione e scelta della modalità](docs/import.png)
 
@@ -43,6 +46,34 @@ Richiede **macOS 14+**; Apple Silicon per la modalità locale. Build e inferenza
 5. Copia il testo o usa **Esporta**.
 
 ![Correzione di un passaggio con dati di esempio](docs/editor.png)
+
+### Registrazione rapida
+
+Premi **⌃⌥Spazio** una volta per registrare dal microfono predefinito del Mac e una seconda volta per fermare e trascrivere. La combinazione è selezionabile o disattivabile in **Impostazioni → Registrazione rapida**. Puoi anche usare **Registra dal microfono**, il menu Registrazione o l’icona nella barra dei menu. Se una combinazione è già occupata, ad esempio da Handy, l’app segnala il conflitto nelle impostazioni.
+
+macOS chiede l’accesso al microfono al primo utilizzo. Il livello audio e il tempo trascorso sono visibili durante la registrazione; **Annulla** elimina la registrazione corrente. Le registrazioni fermate vengono conservate nella sottocartella `Registrazioni` dell’archivio. Il testo appare quando la registrazione è finita e, se abilitato, viene copiato negli appunti, pronto per Cmd-V nell’altra app. La modalità scelta, locale oppure OpenRouter, vale anche per il microfono. L’app non incolla automaticamente e non richiede permessi di Accessibilità per la scorciatoia.
+
+La dettatura rapida evita inizialmente l’analisi degli speaker per non caricare un secondo modello. Puoi abilitarla in **Impostazioni → Registrazione rapida** per le conversazioni con più persone. I file importati mantengono le impostazioni di diarizzazione già previste dalle due modalità.
+
+### Nomi e termini corretti
+
+In **Impostazioni → Dizionario personale** aggiungi la grafia corretta e le varianti separate da punto e virgola: per esempio `evoseed` con variante `Evo seed`, oppure `Giovanni Tommasini` con variante `Giovani Tommasini`. I termini si possono modificare o eliminare e vengono salvati sul Mac in `Dizionario.json`.
+
+Dalla trascrizione apri **Correzioni → Rivedi suggerimenti del dizionario**: confronta prima e dopo, deseleziona i passaggi da lasciare invariati e applica quelli confermati. Le sostituzioni rispettano le parole intere e non cambiano i timestamp. Il testo originale resta disponibile nel JSON. La correzione usa le varianti esplicite e le maiuscole indicate; non riscrive automaticamente grammatica, significato o parole simili non presenti nel dizionario. I termini non vengono inviati al provider.
+
+### Aggiornamenti
+
+Il footer rimane visibile sotto la libreria e la trascrizione. **Controlla aggiornamenti** interroga la release stabile più recente di questo repository tramite l’API pubblica GitHub, senza chiave e solo su richiesta. Confronta numericamente le versioni e propone lo ZIP macOS o la pagina della release. Errori di rete e limiti GitHub sono mostrati come errori, senza indicare falsamente che l’app è aggiornata.
+
+Il download si apre nel browser. Per aggiornare, chiudi VoiceDeck e sostituisci l’app estratta dallo ZIP; l’archivio e il dizionario restano nella cartella Application Support. Non è prevista installazione automatica.
+
+### Risorse del Mac
+
+La configurazione predefinita privilegia l’efficienza: Parakeet e diarizzazione usano **CPU e Neural Engine**, quando disponibile, tramite Core ML. I modelli vengono caricati uno alla volta e rilasciati prima che il lavoro sia dichiarato concluso. L’audio viene letto a blocchi, con un solo worker ASR; nessun modello rimane caricato durante l’inattività. Il timer del microfono è attivo solo durante la registrazione.
+
+L’opzione **Preferisci GPU per l’encoder Parakeet** è disattivata inizialmente. Se abilitata, propone CPU/GPU per l’encoder mantenendo il decoder sul percorso efficiente. Risparmio energetico, temperatura elevata o pressione sulla memoria prevalgono sulla preferenza; un encoder GPU non caricabile torna automaticamente al percorso efficiente. La GPU non garantisce un vantaggio su ogni Mac o modello: confronta le prestazioni sul tuo hardware. La selezione delle unità ammesse non è una misura dell’utilizzo effettivo: Core ML decide come eseguire le singole operazioni.
+
+Tra le chiamate di inferenza l’app verifica le condizioni: con temperatura critica sospende il lavoro in modo annullabile, con pressione critica della memoria si ferma conservando le parti salvate per la ripresa. I controlli avvengono tra le parti ASR e, per gli speaker, tra blocchi di circa un secondo; non interrompono una chiamata Core ML in corso. La GPU del Mac non accelera la trascrizione remota OpenRouter.
 
 Conserva il file audio originale nella stessa posizione per riascolto e ripresa. L’app non lo modifica. I risultati sono in `~/Library/Application Support/VoiceDeck/`, apribile da Impostazioni. Gli archivi della prima versione, chiamata NemotronTranscribe, vengono copiati al primo avvio di VoiceDeck.
 
@@ -81,6 +112,7 @@ La build è firmata ad hoc per uso locale e non è notarizzata per distribuzione
 CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swift test --disable-sandbox --cache-path .build/cache
 swift run TranscribeCheck /percorso/audio.wav
 swift run TranscribeCheck /percorso/audio.wav --speakers --transcribe-local
+swift run TranscribeCheck /percorso/audio.wav --transcribe-local --prefer-gpu
 ```
 
 `TranscribeCheck` verifica conversione e inferenza senza OpenRouter. Accetta `--models /cartella/speaker`, `--asr-models /cartella/parakeet` e `--output /percorso/risultato.json` per usare copie locali e salvare l’output.
@@ -101,7 +133,7 @@ I test coprono WAV stereo oltre 25 MB, continuità tra parti, code brevi, margin
 
 Le chiamate OpenRouter autenticate richiedono chiave e credito e non sono eseguite dai test automatici. Il costo mostrato somma `usage.cost` delle risposte ricevute e salvate; richieste interrotte o ritentate possono essere state comunque elaborate dal provider.
 
-Codice: [MIT](LICENSE). Modelli e dipendenze: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Icona generata con imagegen: [asset e prompt](assets/ICON_PROMPT.md).
+Codice: [MIT](LICENSE). Modelli e dipendenze: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Icona nativa nello stile di ModelDeck: [asset e sorgente](assets/ICON_PROMPT.md).
 
 ## Crediti
 

@@ -6,7 +6,7 @@ struct TranscribeCheck {
     static func main() async {
         let arguments = Array(CommandLine.arguments.dropFirst())
         guard let path = arguments.first, !path.hasPrefix("--") else {
-            print("Uso: TranscribeCheck /percorso/audio [--speakers] [--models /cartella/speaker] [--transcribe-local] [--asr-models /cartella/parakeet]")
+            print("Uso: TranscribeCheck /percorso/audio [--speakers] [--models /cartella/speaker] [--transcribe-local] [--asr-models /cartella/parakeet] [--prefer-gpu]")
             exit(2)
         }
         do {
@@ -28,7 +28,8 @@ struct TranscribeCheck {
                 let index = arguments.firstIndex(of: "--asr-models")
                 let directory = index.flatMap { $0 + 1 < arguments.count ? URL(fileURLWithPath: arguments[$0 + 1]) : nil }
                 let local = LocalTranscriber()
-                try await local.loadModels(from: directory)
+                try await local.loadModels(from: directory, preferGPU: arguments.contains("--prefer-gpu"))
+                print("Esecuzione: \(await local.executionDescription)")
                 var document = TranscriptDocument(title: URL(fileURLWithPath: path).lastPathComponent, sourcePath: path, duration: prepared.duration)
                 document.model = TranscriptionMode.localModelID
                 document.totalChunks = prepared.chunks.count

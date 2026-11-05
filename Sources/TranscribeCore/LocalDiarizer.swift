@@ -12,12 +12,15 @@ public struct SpeakerInterval: Codable, Sendable, Equatable {
 public actor LocalDiarizer {
     public init() {}
     public func analyze(_ audio: PreparedAudio, cacheDirectory: URL? = nil, localModelDirectory: URL? = nil,
+                        preferGPU: Bool = false,
                         progress: @Sendable (Double, String) async -> Void) async throws -> [SpeakerInterval] {
+        try await ResourceGovernor.checkpoint()
         await progress(0, "Preparazione modello speaker (circa 190 MB al primo utilizzo)…")
         let config = Nemotron3Config.fast128
+        let plan = ExecutionPlan.choose(preferGPU: preferGPU, resources: .current)
         let models: Nemotron3Models
-        if let localModelDirectory { models = try await Nemotron3Models.load(config: config, directory: localModelDirectory) }
-        else { models = try await Nemotron3Models.loadFromHuggingFace(config: config, cacheDirectory: cacheDirectory) }
+        if let localModelDirectory { models = try await Nemotron3Models.load(config: config, directory: localModelDirectory, computeUnits: plan.otherUnits) }
+        else { models = try await Nemotron3Models.loadFromHuggingFace(config: config, cacheDirectory: cacheDirectory, computeUnits: plan.otherUnits) }
         try Task.checkCancellation()
         let diarizer = Nemotron3Diarizer(config: config, models: models)
         var probabilities: [Float] = []
@@ -29,6 +32,10 @@ public actor LocalDiarizer {
             try handle.seek(toOffset: 44) // Our canonical WAV has a fixed 44-byte PCM header.
             while let data = try handle.read(upToCount: 32_000), !data.isEmpty {
                 try Task.checkCancellation()
+                let fraction = min(0.99, Double(consumedSamples) / 16_000 / audio.duration)
+                try await ResourceGovernor.checkpoint { message in
+                    await progress(fraction, message)
+                }
                 try autoreleasepool {
                     let samples = data.withUnsafeBytes { raw -> [Float] in
                         let bytes = raw.bindMemory(to: UInt8.self)

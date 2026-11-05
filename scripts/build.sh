@@ -27,6 +27,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 <key>CFBundleVersion</key><string>1</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>
+<key>NSMicrophoneUsageDescription</key><string>VoiceDeck registra dal microfono quando lo avvii, per trascrivere la tua voce nella modalità che hai scelto.</string>
 <key>NSHumanReadableCopyright</key><string>VoiceDeck · Giovanni Tommasini</string>
 </dict></plist>
 PLIST

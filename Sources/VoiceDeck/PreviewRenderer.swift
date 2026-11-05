@@ -12,7 +12,7 @@ enum PreviewRenderer {
         let content: AnyView
         if editor, let segment = store.document?.segments.first { content = AnyView(SegmentEditor(segment: segment)) }
         else { content = AnyView(ContentView()) }
-        let hosting = NSHostingView(rootView: content.environmentObject(store).tint(Palette.accent).preferredColorScheme(.light))
+        let hosting = NSHostingView(rootView: content.environmentObject(store).environmentObject(AppUpdater()).tint(Palette.accent).preferredColorScheme(.light))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: editor ? 772 : 1320, height: editor ? 512 : 900), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.contentView = hosting; window.orderFront(nil)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {

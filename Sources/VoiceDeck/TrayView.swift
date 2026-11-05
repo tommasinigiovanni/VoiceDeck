@@ -17,7 +17,17 @@ struct TrayView: View {
                 }
                 Spacer()
             }
-            if store.isBusy {
+            if store.isCapturing {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label(store.isRecording ? "Microfono attivo" : "Accesso al microfono…", systemImage: "record.circle.fill").foregroundStyle(.red)
+                    HStack {
+                        Text(Timecode.display(store.recorder.elapsed)).monospacedDigit()
+                        ProgressView(value: store.recorder.level).tint(.red)
+                    }
+                    Button("Ferma e trascrivi") { store.toggleRecording() }.disabled(!store.isRecording)
+                    Button("Annulla registrazione") { store.discardRecording() }.disabled(!store.isRecording)
+                }.font(.system(size: 12))
+            } else if store.isBusy {
                 VStack(alignment: .leading, spacing: 9) {
                     Text(store.phase).font(.system(size: 12)).lineLimit(3)
                     ProgressView(value: store.progress)
@@ -40,11 +50,16 @@ struct TrayView: View {
             Button { showWindow() } label: {
                 Label("Apri VoiceDeck", systemImage: "macwindow").frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(.borderedProminent)
+            if !store.isCapturing {
+                Button { store.toggleRecording() } label: {
+                    Label("Registra · \(store.shortcutTitle)", systemImage: "mic").frame(maxWidth: .infinity, alignment: .leading)
+                }.disabled(!store.canToggleRecording)
+            }
             Button {
                 showWindow(); store.newTranscription(); store.chooseFile()
             } label: { Label("Importa audio…", systemImage: "waveform.badge.plus").frame(maxWidth: .infinity, alignment: .leading) }
-                .disabled(store.isBusy)
-            if !store.isBusy, store.sourceURL != nil, store.document?.isComplete != true {
+                .disabled(store.blocksChanges)
+            if !store.blocksChanges, store.sourceURL != nil, store.document?.isComplete != true {
                 Button(store.document == nil ? "Trascrivi audio" : "Riprendi trascrizione") { showWindow(); store.start() }
             }
             if store.player != nil {

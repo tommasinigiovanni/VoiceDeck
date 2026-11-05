@@ -1,5 +1,6 @@
 import Foundation
 import FluidAudio
+@preconcurrency import CoreML
 
 public enum TranscriptionMode: String, CaseIterable, Sendable {
     case openRouter, local
@@ -10,6 +11,8 @@ public enum TranscriptionMode: String, CaseIterable, Sendable {
 
 public actor LocalTranscriber {
     private var manager: AsrManager?
+    private var plan: ExecutionPlan?
+    public private(set) var executionDescription = ""
     public init() {}
 
     public static func modelsExist(at directory: URL) -> Bool {
@@ -18,10 +21,29 @@ public actor LocalTranscriber {
             && FileManager.default.fileExists(atPath: directory.appendingPathComponent("parakeet_vocab.json").path)
     }
 
-    public func loadModels(from directory: URL? = nil,
+    public func loadModels(from directory: URL? = nil, preferGPU: Bool = false,
                            progress: @escaping @Sendable (Double) async -> Void = { _ in }) async throws {
         if manager != nil { return }
         try Task.checkCancellation()
+        try await ResourceGovernor.checkpoint()
+        let requested = ExecutionPlan.choose(preferGPU: preferGPU, resources: .current)
+        do {
+            try await load(from: directory, plan: requested, progress: progress)
+        } catch {
+            try Task.checkCancellation()
+            guard requested.usesGPU else { throw error }
+            // Some model/OS combinations cannot compile an int8 encoder for GPU.
+            let fallback = ExecutionPlan.choose(preferGPU: false, resources: .current)
+            try await load(from: directory, plan: fallback, progress: progress)
+            executionDescription += " · fallback dalla GPU"
+        }
+    }
+
+    private func load(from directory: URL?, plan: ExecutionPlan,
+                      progress: @escaping @Sendable (Double) async -> Void) async throws {
+        let configuration = MLModelConfiguration()
+        configuration.computeUnits = plan.otherUnits
+        configuration.allowLowPrecisionAccumulationOnGPU = true
         let models: AsrModels
         let cached = AsrModels.defaultCacheDirectory(for: .v3)
         let available = directory ?? (Self.modelsExist(at: cached) ? cached : nil)
@@ -30,16 +52,23 @@ public actor LocalTranscriber {
             guard Self.modelsExist(at: directory) else {
                 throw TranscribeError.message("La cartella deve contenere Parakeet v3 in Core ML: Encoder, Decoder, Preprocessor, JointDecisionv3 e parakeet_vocab.json. I file GGUF o ONNX di altre app richiedono un runtime diverso.")
             }
-            models = try AsrModels.loadLocal(from: directory, version: .v3)
+            models = try AsrModels.loadLocal(from: directory, version: .v3, configuration: configuration, encoderComputeUnits: plan.encoderUnits)
         } else {
-            models = try await AsrModels.downloadAndLoad(version: .v3, progressHandler: { update in
+            models = try await AsrModels.downloadAndLoad(configuration: configuration, version: .v3, encoderComputeUnits: plan.encoderUnits, progressHandler: { update in
                 Task { await progress(update.fractionCompleted) }
             })
         }
         try Task.checkCancellation()
         let asr = AsrManager(config: ASRConfig(parallelChunkConcurrency: 1))
         try await asr.loadModels(models)
-        manager = asr
+        manager = asr; self.plan = plan; executionDescription = plan.description
+    }
+
+    public func adaptToSystemConditions(from directory: URL? = nil) async throws {
+        if plan?.usesGPU == true, !ExecutionPlan.choose(preferGPU: true, resources: .current).usesGPU {
+            await cleanup()
+            try await loadModels(from: directory, preferGPU: false)
+        }
     }
 
     public func transcribe(chunk: AudioChunk, language: String = "") async throws -> TranscriptionResult {
@@ -62,6 +91,6 @@ public actor LocalTranscriber {
     }
 
     public func cleanup() async {
-        await manager?.cleanup(); manager = nil
+        await manager?.cleanup(); manager = nil; plan = nil
     }
 }
