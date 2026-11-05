@@ -1,0 +1,103 @@
+<img src="Sources/VoiceDeck/Resources/AppIcon.png" width="104" alt="VoiceDeck icon">
+
+# VoiceDeck
+
+**Audio, speaker e testo modificabile. Sul Mac o con OpenRouter.**
+
+App nativa macOS in SwiftUI per trascrivere registrazioni, distinguere le voci e correggere il testo riascoltando il punto originale.
+
+![VoiceDeck con dati di esempio](docs/transcript.png)
+
+## Due modalità
+
+| Modalità | Trascrizione | Speaker | Connessione |
+| --- | --- | --- | --- |
+| **Locale** | NVIDIA Parakeet TDT 0.6B v3 via Core ML | Nemotron 3 Diarization sul Mac | Solo per scaricare i modelli |
+| **OpenRouter** | `nvidia/nemotron-3.5-transcribe` | Nemotron 3 Diarization sul Mac | Chiave e credito OpenRouter |
+
+La modalità locale funziona offline dopo il download iniziale, senza costi API e senza inviare audio a servizi remoti. I modelli usano la cache condivisa FluidAudio: circa **480 MB** per Parakeet v3 e **190 MB** per gli speaker. In modalità OpenRouter, l’audio viene inviato al provider scelto dal servizio.
+
+Richiede **macOS 14+**; Apple Silicon per la modalità locale. Build e inferenza locale verificate su un Mac con 16 GB di memoria.
+
+## Funzioni
+
+- Importazione con drag and drop o selettore file: MP3, M4A, WAV, AIFF, FLAC e formati leggibili da macOS.
+- File grandi divisi automaticamente vicino ai silenzi, sotto il limite di 25 MB per richiesta OpenRouter anche dopo Base64.
+- Un’unica analisi locale mantiene gli speaker coerenti lungo tutte le parti, fino a otto voci.
+- **Clic sul testo o sul timestamp** per riascoltare quel punto dell’audio originale.
+- **Matita** per correggere testo e speaker. I timestamp restano invariati e il testo iniziale del modello è conservato nel JSON.
+- Speaker rinominabili e unificabili, ricerca nel testo e filtro per voce.
+- Export TXT, Markdown, JSON e SRT con le correzioni applicate.
+- Archivio locale, salvataggio dopo ogni parte e ripresa dopo errori, interruzioni o riavvio.
+- Chiave OpenRouter nel Portachiavi macOS.
+
+![Importazione e scelta della modalità](docs/import.png)
+
+## Utilizzo
+
+1. Apri **VoiceDeck.app** e importa una registrazione.
+2. Scegli **Locale · Parakeet v3** oppure **OpenRouter · Nemotron 3.5**. Solo per OpenRouter, inserisci la chiave in Impostazioni e premi **Salva nel Portachiavi**.
+3. Premi **Trascrivi audio**. Al primo uso locale l’app scarica e prepara i modelli.
+4. Fai clic su un passaggio per riascoltarlo; usa la matita per correggerlo. Dal pulsante **Speaker** puoi assegnare nomi alle voci.
+5. Copia il testo o usa **Esporta**.
+
+![Correzione di un passaggio con dati di esempio](docs/editor.png)
+
+Conserva il file audio originale nella stessa posizione per riascolto e ripresa. L’app non lo modifica. I risultati sono in `~/Library/Application Support/VoiceDeck/`, apribile da Impostazioni. Gli archivi della prima versione, chiamata NemotronTranscribe, vengono copiati al primo avvio di VoiceDeck.
+
+### Modelli già presenti
+
+VoiceDeck riutilizza automaticamente la cache standard FluidAudio. Puoi anche scegliere una cartella Parakeet Core ML da Impostazioni: deve contenere `Encoder.mlmodelc`, `Decoder.mlmodelc`, `Preprocessor.mlmodelc`, `JointDecisionv3.mlmodelc` e `parakeet_vocab.json`.
+
+Le conversioni GGUF/ONNX di altre app, compreso Handy, richiedono runtime differenti e non sono direttamente compatibili con Core ML. L’app non le modifica o cancella.
+
+## Audio lungo e diarizzazione
+
+AVAudioFile e AVAudioConverter leggono l’audio a blocchi e lo normalizzano in WAV PCM16 mono a 16 kHz. Le parti durano circa 8 minuti; il taglio cerca un punto silenzioso negli ultimi 8 secondi, senza perdere o duplicare campioni. Le code inferiori a mezzo secondo restano nella parte precedente se il limite lo consente. Puoi scegliere parti da 5 o 2 minuti nelle impostazioni.
+
+Il controllo considera **l’intero JSON dopo Base64**, con un massimo di sicurezza di 24,5 MB e un limite separato di 18 MB per il WAV. Gli archivi usano scrittura atomica. **Riprendi** salta le parti già salvate mantenendo modello e impostazioni originali; dimensione e data di modifica dell’audio devono essere invariate. I temporanei vengono rimossi a fine lavoro e dopo annullamenti gestiti; una chiusura forzata può lasciarli nella cartella temporanea di sistema.
+
+Verifica del **5 novembre 2026**: l’[endpoint OpenRouter del modello](https://openrouter.ai/api/v1/models/nvidia/nemotron-3.5-transcribe/endpoints) riporta `supports_diarization: false` per Prime Intellect e DeepInfra. Il modello supporta gli speaker, ma l’API ospitata non li espone ancora; anche il [rilascio DeepInfra](https://deepinfra.com/blog/nvidia-nemotron-3-5-transcribe-release) distingue queste capacità.
+
+VoiceDeck usa quindi [Nemotron 3 Diarization via FluidAudio](https://github.com/FluidInference/FluidAudio/blob/v0.17.7/Documentation/Diarization/Nemotron3.md), preset `fast128`, mantenendo lo stato tra le parti e associando le parole ai tempi delle voci. Le etichette sono anonime e possono richiedere correzioni, soprattutto con rumore o parlato sovrapposto. Se arrivano solo tempi di segmento, l’attribuzione è meno precisa; se mancano i tempi, non vengono inventati timestamp o speaker. L’SRT include solo passaggi con tempi validi. Gli eventuali speaker del provider, senza analisi locale, rimangono distinti tra richieste.
+
+API: [OpenRouter Speech-to-Text](https://openrouter.ai/docs/guides/overview/multimodal/stt). La modalità OpenRouter usa sempre il modello richiesto e non passa ad altri modelli cloud.
+
+## Compilazione
+
+Richiede Xcode con **Swift 6.2+**. Apri `Package.swift` in Xcode oppure:
+
+```sh
+git clone https://github.com/tommasinigiovanni/VoiceDeck.git
+cd VoiceDeck
+bash scripts/build.sh
+open build/VoiceDeck.app
+```
+
+La build è firmata ad hoc per uso locale e non è notarizzata per distribuzione pubblica. I pesi non sono inclusi nell’app o nel repository.
+
+```sh
+CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swift test --disable-sandbox --cache-path .build/cache
+swift run TranscribeCheck /percorso/audio.wav
+swift run TranscribeCheck /percorso/audio.wav --speakers --transcribe-local
+```
+
+`TranscribeCheck` verifica conversione e inferenza senza OpenRouter. Accetta `--models /cartella/speaker`, `--asr-models /cartella/parakeet` e `--output /percorso/risultato.json` per usare copie locali e salvare l’output.
+
+Schermate dimostrative, senza credenziali:
+
+```sh
+.build/debug/VoiceDeck --preview docs/transcript.png
+.build/debug/VoiceDeck --preview docs/import.png --import-preview --local-preview
+.build/debug/VoiceDeck --preview docs/editor.png --editor-preview
+```
+
+In ambienti con Git limitato, `VOICEDECK_FLUIDAUDIO_PATH` può puntare alla release locale di FluidAudio 0.17.7. La dipendenza standard e il lockfile fissano la stessa release pubblica.
+
+## Verifiche e licenze
+
+I test coprono WAV stereo oltre 25 MB, continuità tra parti, code brevi, margine Base64, timestamp globali, parsing, speaker, editing senza alterare i tempi, SRT, ripresa, annullamento e contratto HTTP. L’inferenza locale è verificata anche con modelli reali su una registrazione vocale. La CI compila, testa e prepara un archivio dell’app.
+
+Le chiamate OpenRouter autenticate richiedono chiave e credito e non sono eseguite dai test automatici. Il costo mostrato somma `usage.cost` delle risposte ricevute e salvate; richieste interrotte o ritentate possono essere state comunque elaborate dal provider.
+
+Codice: [MIT](LICENSE). Modelli e dipendenze: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Icona generata con imagegen: [asset e prompt](assets/ICON_PROMPT.md).
