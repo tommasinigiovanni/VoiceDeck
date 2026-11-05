@@ -47,7 +47,7 @@ struct SettingsView: View {
                 Text("I risultati sono salvati sul Mac dopo ogni parte. Per riprendere dopo la chiusura dell’app, conserva il file audio originale nella stessa posizione.").font(.caption).foregroundStyle(.secondary)
             }
             Section("Crediti") {
-                Text("VoiceDeck 0.1.0 · App nativa per macOS").font(.caption)
+                Text("VoiceDeck \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development") · App nativa per macOS").font(.caption)
                 HStack { Link("FluidAudio (Apache 2.0)", destination: URL(string: "https://github.com/FluidInference/FluidAudio")!)
                     Link("Modello speaker (OpenMDW 1.1)", destination: URL(string: "https://huggingface.co/FluidInference/nemotron-3-diarization-coreml")!) }.font(.caption)
             }

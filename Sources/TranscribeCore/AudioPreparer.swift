@@ -44,6 +44,7 @@ public actor AudioPreparer {
 
     public func prepare(url: URL, chunkSeconds: Int = AudioLimits.defaultChunkSeconds,
                         progress: @Sendable (Double) async -> Void = { _ in }) async throws -> PreparedAudio {
+        try Task.checkCancellation()
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("VoiceDeck-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         do {

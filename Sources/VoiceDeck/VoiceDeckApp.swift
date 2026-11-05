@@ -34,6 +34,9 @@ struct VoiceDeckApp: App {
             }
         }
         Settings { SettingsView().environmentObject(store).tint(Palette.accent) }
+        MenuBarExtra("VoiceDeck", systemImage: "waveform") {
+            TrayView().environmentObject(store).tint(Palette.accent)
+        }.menuBarExtraStyle(.window)
     }
 }
 
@@ -41,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true)
     }
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
 
 enum Palette {

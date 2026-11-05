@@ -127,10 +127,10 @@ final class TranscribeCoreTests: XCTestCase {
 
     func testPreCancelledJobStopsBeforeReading() async throws {
         let task = Task { () -> PreparedAudio in
-            try Task.checkCancellation()
+            // Cancel before entering the actor, without racing the caller's scheduler.
+            withUnsafeCurrentTask { $0?.cancel() }
             return try await AudioPreparer().prepare(url: URL(fileURLWithPath: "/tmp/nonexistent-audio"))
         }
-        task.cancel()
         do { let audio = try await task.value; audio.cleanup(); XCTFail("Expected cancellation") } catch is CancellationError {} catch { XCTFail("\(error)") }
     }
 

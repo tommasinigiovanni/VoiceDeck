@@ -30,6 +30,7 @@ Richiede **macOS 14+**; Apple Silicon per la modalità locale. Build e inferenza
 - Export TXT, Markdown, JSON e SRT con le correzioni applicate.
 - Archivio locale, salvataggio dopo ogni parte e ripresa dopo errori, interruzioni o riavvio.
 - Chiave OpenRouter nel Portachiavi macOS.
+- Icona nella barra dei menu con importazione, apertura della finestra, avanzamento, interruzione e impostazioni. Chiudere la finestra mantiene l’app disponibile; usa **Esci** o Cmd-Q per terminarla.
 
 ![Importazione e scelta della modalità](docs/import.png)
 
