@@ -32,11 +32,11 @@ struct AppFooter: View {
                   systemImage: store.isRecording ? "record.circle.fill" : "keyboard")
                 .foregroundStyle(store.isRecording ? .red : .secondary)
             Spacer(minLength: 12)
-            Text("VoiceDeck \(AppUpdater.currentVersion)").foregroundStyle(.tertiary)
+            Text("VoiceDeck \(AppUpdater.currentVersion)").font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
             if updater.checking { ProgressView().controlSize(.mini) }
             Button { updater.check() } label: {
                 Label(updater.checking ? "Verifica in corso…" : "Controlla aggiornamenti", systemImage: "arrow.triangle.2.circlepath")
-            }.buttonStyle(.plain).disabled(updater.checking)
+            }.buttonStyle(.plain).foregroundStyle(Palette.accent).disabled(updater.checking)
                 .popover(isPresented: $updater.showsResult, arrowEdge: .bottom) {
                     VStack(alignment: .leading, spacing: 14) {
                         Label(updater.failed ? "Verifica non riuscita" : updater.release == nil ? "App aggiornata" : "Aggiornamento disponibile",
@@ -54,8 +54,8 @@ struct AppFooter: View {
                         }
                     }.padding(20).frame(width: 330)
                 }
-        }.font(.system(size: 11)).padding(.horizontal, 18).padding(.vertical, 12)
-            .background(Color(nsColor: .windowBackgroundColor))
+        }.font(.system(size: 10)).padding(.horizontal, 24).padding(.vertical, 12)
+            .background(Palette.background)
             .overlay(alignment: .top) { Divider() }
     }
 }

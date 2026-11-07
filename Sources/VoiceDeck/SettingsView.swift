@@ -3,6 +3,7 @@ import TranscribeCore
 
 struct SettingsView: View {
     @EnvironmentObject var store: TranscribeStore
+    @Environment(\.openWindow) private var openWindow
     @State private var showVocabulary = false
     var body: some View {
         Form {
@@ -76,16 +77,12 @@ struct SettingsView: View {
                 Text("I risultati sono salvati sul Mac dopo ogni parte. Per riprendere dopo la chiusura dell’app, conserva il file audio originale nella stessa posizione.").font(.caption).foregroundStyle(.secondary)
             }
             Section("Crediti") {
-                Text("VoiceDeck \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development") · App nativa per macOS").font(.caption)
-                Text("Sviluppato da Giovanni Tommasini").font(.callout.weight(.semibold))
-                Link("Giovanni Tommasini su GitHub", destination: URL(string: "https://github.com/tommasinigiovanni")!)
-                HStack {
-                    Link("Repository del progetto", destination: URL(string: "https://github.com/tommasinigiovanni/VoiceDeck")!)
-                    Link("Segnalazioni e proposte", destination: URL(string: "https://github.com/tommasinigiovanni/VoiceDeck/issues")!)
-                    Link("Licenza MIT", destination: URL(string: "https://github.com/tommasinigiovanni/VoiceDeck/blob/main/LICENSE")!)
-                }.font(.caption)
-                HStack { Link("FluidAudio (Apache 2.0)", destination: URL(string: "https://github.com/FluidInference/FluidAudio")!)
-                    Link("Modello speaker (OpenMDW 1.1)", destination: URL(string: "https://huggingface.co/FluidInference/nemotron-3-diarization-coreml")!) }.font(.caption)
+                Button("Apri la pagina Crediti") {
+                    store.showsCredits = true
+                    openWindow(id: "main")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                Text("Autore, codice sorgente, licenza e componenti di VoiceDeck.").font(.caption).foregroundStyle(.secondary)
             }
         }.formStyle(.grouped).frame(width: 650, height: 780)
             .sheet(isPresented: $showVocabulary) { VocabularyView().environmentObject(store) }

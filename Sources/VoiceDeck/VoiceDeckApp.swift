@@ -63,13 +63,3 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
-
-enum Palette {
-    static let accent = Color(red: 0.38, green: 0.70, blue: 0.28)
-    static let ink = Color(red: 0.12, green: 0.15, blue: 0.13)
-    static let speakerColors: [Color] = [.teal, .indigo, .orange, .pink, .blue, .purple, .brown, .green]
-    static func speaker(_ id: String?, in ids: [String]) -> Color {
-        guard let id, let index = ids.firstIndex(of: id) else { return .secondary }
-        return speakerColors[index % speakerColors.count]
-    }
-}

@@ -8,6 +8,7 @@ import Combine
 final class TranscribeStore: ObservableObject {
     @Published var documents: [TranscriptDocument] = []
     @Published var selectedID: UUID?
+    @Published var showsCredits = false
     @Published var document: TranscriptDocument?
     @Published var sourceURL: URL?
     @Published var sourceDuration: Double = 0
@@ -219,6 +220,7 @@ final class TranscribeStore: ObservableObject {
 
     func importFile(_ url: URL, transcribeAfterImport: Bool = false) {
         guard !blocksChanges else { return }
+        showsCredits = false
         if !transcribeAfterImport { recordingSource = nil }
         job?.cancel()
         isBusy = true; importing = true; phase = "Lettura della registrazione…"; progress = 0
@@ -243,6 +245,7 @@ final class TranscribeStore: ObservableObject {
 
     func newTranscription() {
         guard !blocksChanges else { return }
+        showsCredits = false
         recordingSource = nil
         document = nil; selectedID = nil; sourceURL = nil; sourceDuration = 0; sourceSize = 0
         search = ""; selectedSpeaker = ""; clearPlayer(); phase = "Pronto per il tuo audio"
@@ -250,6 +253,7 @@ final class TranscribeStore: ObservableObject {
 
     func select(_ id: UUID) {
         guard !blocksChanges, let item = documents.first(where: { $0.id == id }) else { return }
+        showsCredits = false
         recordingSource = nil
         selectedID = id; document = item; sourceURL = URL(fileURLWithPath: item.sourcePath)
         sourceDuration = item.duration; sourceSize = item.sourceBytes; search = ""; selectedSpeaker = ""
@@ -259,6 +263,7 @@ final class TranscribeStore: ObservableObject {
 
     func start() {
         guard !blocksChanges, let url = sourceURL else { return }
+        showsCredits = false
         let continuing = document != nil && document?.isComplete == false
         let jobMode = continuing ? displayedMode : mode
         if jobMode == .openRouter {

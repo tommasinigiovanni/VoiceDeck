@@ -34,6 +34,7 @@ Richiede **macOS 14+**; Apple Silicon per la modalità locale. Build e inferenza
 - Registrazione dal microfono con pulsante e scorciatoia globale, anche con un’altra app attiva. Trascrizione e copia negli appunti alla fine della registrazione.
 - Dizionario personale con grafie corrette e varianti per nomi, aziende e termini tecnici; suggerimenti da rivedere prima di applicarli.
 - Footer fisso con versione e **Controlla aggiornamenti**, con download delle nuove release da GitHub.
+- Riquadro Mac nella sidebar con chip, memoria, core, condizioni del sistema e modalità della trascrizione. Grafica chiara e scura nello stile di ModelDeck, con le azioni separate dalla barra del titolo.
 
 ![Importazione e scelta della modalità](docs/import.png)
 
@@ -123,6 +124,9 @@ Schermate dimostrative, senza credenziali:
 .build/debug/VoiceDeck --preview docs/transcript.png
 .build/debug/VoiceDeck --preview docs/import.png --import-preview --local-preview
 .build/debug/VoiceDeck --preview docs/editor.png --editor-preview
+.build/debug/VoiceDeck --preview docs/credits.png --credits-preview
+.build/debug/VoiceDeck --preview /tmp/voicedeck-dark.png --dark-preview
+.build/debug/VoiceDeck --preview /tmp/voicedeck-compact.png --compact-preview
 ```
 
 In ambienti con Git limitato, `VOICEDECK_FLUIDAUDIO_PATH` può puntare alla release locale di FluidAudio 0.17.7. La dipendenza standard e il lockfile fissano la stessa release pubblica.
@@ -137,4 +141,6 @@ Codice: [MIT](LICENSE). Modelli e dipendenze: [THIRD_PARTY_NOTICES.md](THIRD_PAR
 
 ## Crediti
 
-Sviluppato da [Giovanni Tommasini](https://github.com/tommasinigiovanni). [Codice sorgente e aggiornamenti](https://github.com/tommasinigiovanni/VoiceDeck) · [Segnalazioni e proposte](https://github.com/tommasinigiovanni/VoiceDeck/issues). Gli stessi riferimenti sono disponibili nell’app in **Impostazioni → Crediti**.
+Sviluppato da [Giovanni Tommasini](https://github.com/tommasinigiovanni). [Codice sorgente e aggiornamenti](https://github.com/tommasinigiovanni/VoiceDeck) · [Segnalazioni e proposte](https://github.com/tommasinigiovanni/VoiceDeck/issues). Gli stessi riferimenti sono disponibili nella pagina **Crediti** della sidebar, richiamabile anche da Impostazioni. La pagina riprende la struttura di ModelDeck, con autore, collegamenti al progetto e licenze dei componenti di VoiceDeck.
+
+![Pagina Crediti](docs/credits.png)
